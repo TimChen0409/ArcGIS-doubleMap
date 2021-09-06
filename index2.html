@@ -168,7 +168,6 @@
     function toggleLayer(layer) {
 
       if (this.isSynchronized) {
-        console.log("同步");
         let layerId = layer.id;
         let map1TargetLayer = this.view1Layers.find((x) => {
           return x.id === layerId;
@@ -182,7 +181,6 @@
         //陣列的Visible屬性更新時checkbox不會響應式更新，所以須加這欄
         this.$forceUpdate();
       } else {
-        console.log("不同步");
         layer.visible = !layer.visible;
       }
     }
