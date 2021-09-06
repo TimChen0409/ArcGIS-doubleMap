@@ -1,256 +1,254 @@
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="initial-scale=1,maximum-scale=1,user-scalable=no"
-    />
-    <title>Synchronize Two MapCore</title>
-    <style>
-      html,
-      body {
-        padding: 0;
-        margin: 0;
-        height: 100%;
-      }
 
-      #app {
-        padding: 5px;
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Synchronize Two MapCore</title>
+  <style>
+    html,
+    body {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+    }
 
-      #view1Div {
-        position: relative;
-      }
-      #view2Div {
-        position: relative;
-      }
+    #app {
+      padding: 5px;
+    }
 
-      .layerToggle {
-        top: 20px;
-        right: 20px;
-        position: absolute;
-        z-index: 99;
-        background-color: white;
-        border-radius: 8px;
-        padding: 10px;
-        opacity: 0.75;
-      }
+    #view1Div {
+      position: relative;
+    }
 
-      li {
-        list-style: none;
-      }
-    </style>
-    <link
-      rel="stylesheet"
-      href="https://js.arcgis.com/4.20/esri/themes/light/main.css"
-    />
-  </head>
+    #view2Div {
+      position: relative;
+    }
 
-  <body>
-    <div id="app">
+    .layerToggle {
+      top: 20px;
+      right: 20px;
+      position: absolute;
+      z-index: 99;
+      background-color: white;
+      border-radius: 8px;
+      padding: 10px;
+      opacity: 0.75;
+    }
+
+    li {
+      list-style: none;
+    }
+  </style>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.20/esri/themes/light/main.css" />
+</head>
+
+<body>
+  <div id="app">
+    <div>
+      <h4>{{title}}</h4>
       <div>
-        <h4>{{title}}</h4>
-        <div>
-          <input
-            type="checkbox"
-            id="checkbox"
-            v-model="isSynchronized"
-            @change="synchronize(isSynchronized)"
-          />
-          <label for="checkbox">同步：{{ isSynchronized }}</label>
-        </div>
-      </div>
-      <div id="view1Div" style="float: left; width: 50%; height: 90%">
-        <ul class="esri-widget layerToggle">
-          <li v-for="layer in view1Layers">
-            <input
-              type="checkbox"
-              @click="toggleLayer(layer)"
-              v-model="layer.visible"
-            />
-            {{layer.name}}
-          </li>
-        </ul>
-      </div>
-
-      <div id="view2Div" style="float: left; width: 50%; height: 90%">
-        <ul class="esri-widget layerToggle">
-          <li v-for="layer in view2Layers">
-            <input
-              type="checkbox"
-              @click="toggleLayer(layer)"
-              v-model="layer.visible"
-            />
-            {{layer.name}}
-          </li>
-        </ul>
+        <input type="checkbox" id="checkbox" v-model="isSynchronized" @change="synchronize(isSynchronized)" />
+        <label for="checkbox">同步：{{ isSynchronized }}</label>
       </div>
     </div>
-  </body>
+    <div id="view1Div" style="float: left; width: 50%; height: 90%">
+      <ul class="esri-widget layerToggle">
+        <li v-for="layer in view1Layers">
+          <input type="checkbox" @click="toggleLayer(layer)" v-model="layer.visible" />
+          {{layer.name}}
+        </li>
+      </ul>
+    </div>
 
-  <script src="https://js.arcgis.com/4.20/"></script>
-  <script>
-    require([
-      "esri/Map",
-      "esri/layers/FeatureLayer",
-      "esri/layers/TileLayer",
-      "esri/layers/GeoJSONLayer",
-      "esri/views/SceneView",
-      "https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js",
-    ], (Map, FeatureLayer, TileLayer, GeoJSONLayer, SceneView, Vue) => {
-      let _geoLayer1 = new GeoJSONLayer({
-        url: "https://mpbais.motcmpb.gov.tw/webservice/geojsonais.ashx",
-        id: 0,
-        name: "ship",
-      });
+    <div id="view2Div" style="float: left; width: 50%; height: 90%">
+      <ul class="esri-widget layerToggle">
+        <li v-for="layer in view2Layers">
+          <input type="checkbox" @click="toggleLayer(layer)" v-model="layer.visible" />
+          {{layer.name}}
+        </li>
+      </ul>
+    </div>
+  </div>
+</body>
 
-      let _geoLayer2 = new GeoJSONLayer({
-        url: "https://mpbais.motcmpb.gov.tw/webservice/geojsonais.ashx",
-        id: 0,
-        name: "ship",
-      });
-
-      let _vm = initVue();
-
-      function initVue() {
-        return new Vue({
-          el: "#app",
-          data: {
-            title:
-              "三維影像雙視窗比對測試(雙地圖核心)，(如果點擊同步時右側地圖圖層狀態會與左側地圖一致)",
-            view1Layers: [_geoLayer1],
-            view2Layers: [_geoLayer2],
-            isSynchronized: false,
-            map1: null,
-            map2: null,
-            views: [],
-            active: null,
-          },
-          computed: {},
-          methods: {
-            initMap: initMap,
-            synchronize: synchronize,
-            sync: sync,
-            toggleLayer: toggleLayer,
-          },
-          mounted() {
-            this.initMap();
-          },
-          created() {},
-          watch: {},
-        });
-      }
-
-      function sync(vm, source) {
-        if (!vm.active || !vm.active.viewpoint || vm.active !== source) {
-          return;
-        }
-        for (let item of vm.views) {
-          if (item.view !== vm.active) {
-            item.view.viewpoint = vm.active.viewpoint;
-          }
-        }
-      }
-
-      function synchronize(val) {
-        let vm = this;
-        let saveLeftMapLayerStatus = [];
-        if (val) {
-          for (let item of vm.views) {
-            item.animationWatch = item.view.watch(
-              ["interacting", "animation"],
-              () => {
-                vm.active = item.view;
-                sync(vm, vm.active);
-              }
-            );
-            item.viewpointWatch = item.view.watch("viewpoint", () =>
-              sync(vm, item.view)
-            );
-          }
-
-          //儲存左側地圖圖層開關狀態，並拿來設定右側圖層開關狀態
-          this.view1Layers.forEach((x) => {
-            saveLeftMapLayerStatus.push(x.visible);
-          });
-          this.view2Layers.forEach((x, index) => {
-            x.visible = saveLeftMapLayerStatus[index];
-          });
-        } else {
-          for (let item of vm.views) {
-            item.animationWatch.remove();
-            item.viewpointWatch.remove();
-          }
-        }
-      }
-
-      function toggleLayer(layer) {
-
-        if (this.isSynchronized) {
-          console.log("同步");
-          let layerId = layer.id;
-          let map1TargetLayer = this.view1Layers.find((x) => {
-            return x.id === layerId;
-          });
-          map1TargetLayer.visible = !map1TargetLayer.visible;
-
-          let map2TargetLayer = this.view2Layers.find((x) => {
-            return x.id === layerId;
-          });
-          map2TargetLayer.visible = !map2TargetLayer.visible;
-          //陣列的Visible屬性更新時checkbox不會響應式更新，所以須加這欄
-          this.$forceUpdate();
-        } else {
-          console.log("不同步");
-          layer.visible = !layer.visible;
-        }
-      }
-
-      function initMap() {
-        let vm = this;
-
-        let map1 = new Map({
-          basemap: "satellite",
-          layers: this.view1Layers,
-        });
-
-        let map2 = new Map({
-          basemap: "streets-vector",
-          layers: this.view2Layers,
-        });
-
-        let view1 = new SceneView({
-          container: "view1Div",
-          map: map1,
-          center: [120.98, 23.68],
-        });
-
-        let view2 = new SceneView({
-          container: "view2Div",
-          map: map2,
-          constraints: {
-            // Disable zoom snapping to get the best synchronization
-            snapToZoom: false,
-          },
-          center: [120.98, 23.68],
-        });
-
-        let views = [
-          {
-            view: view1,
-            animationWatch: null,
-            viewpointWatch: null,
-          },
-          {
-            view: view2,
-            animationWatch: null,
-            viewpointWatch: null,
-          },
-        ];
-        this.map1 = map1;
-        this.map2 = map2;
-        this.views = views;
-      }
+<script src="https://js.arcgis.com/4.20/"></script>
+<script>
+  require([
+    "esri/Map",
+    "esri/layers/FeatureLayer",
+    "esri/layers/TileLayer",
+    "esri/layers/GeoJSONLayer",
+    "esri/views/SceneView",
+    "https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js",
+  ], (Map, FeatureLayer, TileLayer, GeoJSONLayer, SceneView, Vue) => {
+    let _featureLayer1 = new FeatureLayer({
+      url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/Landscape_Trees/FeatureServer/0",
+      id: 0,
+      name: "layer",
     });
-  </script>
+
+    let _featureLayer2 = new FeatureLayer({
+      url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/Landscape_Trees/FeatureServer/0",
+      id: 0,
+      name: "layer",
+    });
+
+    let _vm = initVue();
+
+    function initVue() {
+      return new Vue({
+        el: "#app",
+        data: {
+          title:
+            "三維影像雙視窗比對測試(雙地圖核心)，(如果點擊同步時右側地圖圖層狀態會與左側地圖一致)",
+          view1Layers: [_featureLayer1],
+          view2Layers: [_featureLayer2],
+          isSynchronized: false,
+          map1: null,
+          map2: null,
+          views: [],
+          active: null,
+        },
+        computed: {},
+        methods: {
+          initMap: initMap,
+          synchronize: synchronize,
+          sync: sync,
+          toggleLayer: toggleLayer,
+        },
+        mounted() {
+          this.initMap();
+        }
+      });
+    }
+
+    function sync(vm, source) {
+      if (!vm.active || !vm.active.viewpoint || vm.active !== source) {
+        return;
+      }
+      for (let item of vm.views) {
+        if (item.view !== vm.active) {
+          item.view.viewpoint = vm.active.viewpoint;
+        }
+      }
+    }
+
+    function synchronize(val) {
+      let vm = this;
+      let saveLeftMapLayerStatus = [];
+      if (val) {
+        for (let item of vm.views) {
+          item.animationWatch = item.view.watch(
+            ["interacting", "animation"],
+            () => {
+              vm.active = item.view;
+              sync(vm, vm.active);
+            }
+          );
+          item.viewpointWatch = item.view.watch("viewpoint", () =>
+            sync(vm, item.view)
+          );
+        }
+
+        //儲存左側地圖圖層開關狀態，並拿來設定右側圖層開關狀態
+        this.view1Layers.forEach((x) => {
+          saveLeftMapLayerStatus.push(x.visible);
+        });
+        this.view2Layers.forEach((x, index) => {
+          x.visible = saveLeftMapLayerStatus[index];
+        });
+      } else {
+        for (let item of vm.views) {
+          item.animationWatch.remove();
+          item.viewpointWatch.remove();
+        }
+      }
+    }
+
+    function toggleLayer(layer) {
+
+      if (this.isSynchronized) {
+        console.log("同步");
+        let layerId = layer.id;
+        let map1TargetLayer = this.view1Layers.find((x) => {
+          return x.id === layerId;
+        });
+        map1TargetLayer.visible = !map1TargetLayer.visible;
+
+        let map2TargetLayer = this.view2Layers.find((x) => {
+          return x.id === layerId;
+        });
+        map2TargetLayer.visible = !map2TargetLayer.visible;
+        //陣列的Visible屬性更新時checkbox不會響應式更新，所以須加這欄
+        this.$forceUpdate();
+      } else {
+        console.log("不同步");
+        layer.visible = !layer.visible;
+      }
+    }
+
+    function initMap() {
+      let vm = this;
+
+      let map1 = new Map({
+        basemap: "satellite",
+        layers: this.view1Layers,
+      });
+
+      let map2 = new Map({
+        basemap: "streets-vector",
+        layers: this.view2Layers,
+      });
+
+      let view1 = new SceneView({
+        container: "view1Div",
+        map: map1,
+        center: [120.98, 23.68],
+        extent: {
+          // autocasts as new Extent()
+          xmin: -9177811,
+          ymin: 4247000,
+          xmax: -9176791,
+          ymax: 4247784,
+          spatialReference: 102100
+        }
+      });
+
+      let view2 = new SceneView({
+        container: "view2Div",
+        map: map2,
+        constraints: {
+          // Disable zoom snapping to get the best synchronization
+          snapToZoom: false,
+        },
+        center: [120.98, 23.68],
+        extent: {
+          // autocasts as new Extent()
+          xmin: -9177811,
+          ymin: 4247000,
+          xmax: -9176791,
+          ymax: 4247784,
+          spatialReference: 102100
+        }
+      });
+
+      let views = [
+        {
+          view: view1,
+          animationWatch: null,
+          viewpointWatch: null,
+        },
+        {
+          view: view2,
+          animationWatch: null,
+          viewpointWatch: null,
+        },
+      ];
+      this.map1 = map1;
+      this.map2 = map2;
+      this.views = views;
+    }
+  });
+</script>
+
 </html>
